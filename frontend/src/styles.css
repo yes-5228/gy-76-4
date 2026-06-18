@@ -143,6 +143,18 @@ h2 {
   padding: 12px 14px;
 }
 
+.inline-message.warning {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+}
+
+.inline-message.error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
 .page-grid {
   display: grid;
   gap: 18px;
@@ -265,6 +277,14 @@ textarea {
   padding: 0 12px;
 }
 
+.small-button.danger {
+  background: #c0392b;
+}
+
+.small-button.danger:hover {
+  background: #922b21;
+}
+
 .table-list,
 .table-row {
   display: grid;
@@ -287,6 +307,47 @@ textarea {
   display: block;
 }
 
+.table-row.revoked {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tag-locked {
+  background: #e8daef;
+  color: #6c3483;
+}
+
+.tag-revoked {
+  background: #f5b7b1;
+  color: #922b21;
+}
+
+.tag-note {
+  background: #eaf2f8;
+  color: #2471a3;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .warning-text {
   color: #a45b00;
 }
@@ -304,8 +365,8 @@ textarea {
 .payroll-head,
 .payroll-row {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 0.7fr 0.9fr 0.9fr 1fr;
-  gap: 12px;
+  grid-template-columns: 1fr 0.9fr 0.8fr 0.75fr 0.75fr 0.8fr 0.8fr 0.8fr 0.8fr;
+  gap: 10px;
   align-items: center;
   min-height: 52px;
   border-bottom: 1px solid #edf2ef;
@@ -317,6 +378,34 @@ textarea {
   font-weight: 800;
 }
 
+.payroll-row.locked {
+  background: #fbfcf9;
+}
+
+.payroll-row .diff-indicator {
+  color: #c0392b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.payroll-row .adjust-value.positive {
+  color: #1e8449;
+  font-weight: 700;
+}
+
+.payroll-row .adjust-value.negative {
+  color: #c0392b;
+  font-weight: 700;
+}
+
+.payroll-row .adjust-value {
+  font-weight: 700;
+}
+
+.payroll-row .settled-amount {
+  color: #68756f;
+}
+
 .status-pill {
   display: inline-grid;
   place-items: center;
@@ -325,6 +414,83 @@ textarea {
   background: #d9eee4;
   color: #0f6b52;
   font-weight: 800;
+}
+
+.status-pill.locked {
+  background: #f5b041;
+  color: #784212;
+}
+
+.adjustments-panel {
+  border-bottom: 1px solid #edf2ef;
+  padding: 10px 16px 16px 16px;
+  background: #fdfefc;
+}
+
+.adjustments-toggle {
+  border: 0;
+  background: transparent;
+  color: #0f6b52;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.adjustments-toggle:hover {
+  text-decoration: underline;
+}
+
+.adjustments-list {
+  margin-top: 10px;
+  border: 1px dashed #cfdad3;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.adjustment-item {
+  display: grid;
+  grid-template-columns: 90px 1fr 90px 100px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid #edf2ef;
+  font-size: 13px;
+}
+
+.adjustment-item:last-child {
+  border-bottom: 0;
+}
+
+.adj-date {
+  color: #68756f;
+  font-size: 12px;
+}
+
+.adj-reason {
+  color: #2c3e50;
+}
+
+.adj-hours.positive,
+.adj-amount.positive {
+  color: #1e8449;
+  font-weight: 700;
+}
+
+.adj-hours.negative,
+.adj-amount.negative {
+  color: #c0392b;
+  font-weight: 700;
+}
+
+.payroll-footnote {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #eaf2f8;
+  color: #1b4f72;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 @media (max-width: 900px) {
@@ -371,7 +537,17 @@ textarea {
   }
 
   .payroll-row {
-    grid-template-columns: 1fr 1fr;
-    padding: 12px 0;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 14px 0;
+  }
+
+  .payroll-row > * {
+    font-size: 13px;
+  }
+
+  .adjustment-item {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }

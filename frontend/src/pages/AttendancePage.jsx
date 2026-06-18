@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
+import { currency } from "../utils/format";
 
 const initialForm = {
   student_id: "",
@@ -14,17 +15,50 @@ const initialForm = {
 export function AttendancePage({ students, teachers, attendance, onCreated }) {
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
 
   const submit = async (event) => {
     event.preventDefault();
     setMessage("");
+    setMessageType("info");
     try {
-      await api.checkIn(form);
+      const result = await api.checkIn(form);
       setForm(initialForm);
       await onCreated();
-      setMessage("签到成功，课时已扣减");
+      if (result.adjustment_created) {
+        setMessage(
+          `签到成功，课时已扣减。由于该月课酬已结算，已生成差额调整 +${currency(result.adjustment_amount)}`
+        );
+        setMessageType("warning");
+      } else {
+        setMessage("签到成功，课时已扣减");
+      }
     } catch (error) {
       setMessage(error.message);
+      setMessageType("error");
+    }
+  };
+
+  const revoke = async (record) => {
+    if (!confirm(`确认撤销 ${record.checked_at} 的签到记录吗？课时将退回给学员。`)) {
+      return;
+    }
+    setMessage("");
+    setMessageType("info");
+    try {
+      const result = await api.revokeAttendance(record.id);
+      await onCreated();
+      if (result.adjustment_created) {
+        setMessage(
+          `已撤销签到，课时已退回。由于该月课酬已结算，已生成差额调整 ${currency(result.adjustment_amount)}`
+        );
+        setMessageType("warning");
+      } else {
+        setMessage("已撤销签到，课时已退回");
+      }
+    } catch (error) {
+      setMessage(error.message);
+      setMessageType("error");
     }
   };
 
@@ -36,6 +70,13 @@ export function AttendancePage({ students, teachers, attendance, onCreated }) {
       course_name: student?.course || current.course_name,
     }));
   };
+
+  const messageClass =
+    messageType === "error"
+      ? "inline-message error"
+      : messageType === "warning"
+      ? "inline-message warning"
+      : "inline-message";
 
   return (
     <div className="two-column">
@@ -93,7 +134,7 @@ export function AttendancePage({ students, teachers, attendance, onCreated }) {
             <textarea value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} rows="3" />
           </label>
           <button className="primary-button" type="submit">确认签到</button>
-          {message ? <div className="inline-message">{message}</div> : null}
+          {message ? <div className={messageClass}>{message}</div> : null}
         </form>
       </section>
 
@@ -104,12 +145,34 @@ export function AttendancePage({ students, teachers, attendance, onCreated }) {
         </div>
         {attendance.length ? (
           attendance.map((record) => (
-            <div className="table-row" key={record.id}>
+            <div className={`table-row ${record.revoked ? "revoked" : ""}`} key={record.id}>
               <div>
                 <strong>{record.student_name}</strong>
-                <span>{record.checked_at} / {record.teacher_name} / {record.course_name}</span>
+                <span>
+                  {record.checked_at} / {record.teacher_name} / {record.course_name}
+                </span>
+                <div className="row-tags">
+                  {record.month_is_settled && !record.revoked && (
+                    <span className="tag tag-locked">已结算月</span>
+                  )}
+                  {record.revoked && (
+                    <span className="tag tag-revoked">已撤销 {record.revoked_at}</span>
+                  )}
+                  {record.note && <span className="tag tag-note">备注: {record.note}</span>}
+                </div>
               </div>
-              <b>{record.hours} 课时</b>
+              <div className="row-actions">
+                <b>{record.hours} 课时</b>
+                {!record.revoked && (
+                  <button
+                    className="small-button danger"
+                    type="button"
+                    onClick={() => revoke(record)}
+                  >
+                    撤销
+                  </button>
+                )}
+              </div>
             </div>
           ))
         ) : (

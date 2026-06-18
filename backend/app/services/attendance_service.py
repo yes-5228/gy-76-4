@@ -1,6 +1,7 @@
 from datetime import date
 
 from .validation import require_fields
+from .payroll_service import create_adjustment, get_settlement
 from ..storage import mutate, new_id, read_data
 
 
@@ -17,15 +18,23 @@ def check_in(payload):
     if hours <= 0:
         raise ValueError("课时必须大于 0")
 
+    checked_at = payload.get("checked_at") or date.today().isoformat()
+    month = checked_at[:7]
+    teacher_id = payload["teacher_id"]
+
     attendance_record = {
         "id": new_id("att"),
         "student_id": payload["student_id"],
-        "teacher_id": payload["teacher_id"],
+        "teacher_id": teacher_id,
         "course_name": payload["course_name"].strip(),
         "hours": hours,
-        "checked_at": payload.get("checked_at") or date.today().isoformat(),
+        "checked_at": checked_at,
         "note": payload.get("note", "").strip(),
+        "revoked": False,
+        "revoked_at": None,
     }
+
+    settlement = get_settlement(teacher_id, month)
 
     def add_record(data):
         student = next((item for item in data["students"] if item["id"] == attendance_record["student_id"]), None)
@@ -42,14 +51,83 @@ def check_in(payload):
         return data
 
     mutate(add_record)
+
+    if settlement:
+        hourly_rate = float(settlement["hourly_rate"])
+        amount_diff = round(hours * hourly_rate, 2)
+        create_adjustment(
+            teacher_id=teacher_id,
+            month=month,
+            attendance_id=attendance_record["id"],
+            hours_diff=hours,
+            amount_diff=amount_diff,
+            reason=f"结算后新增签到：{attendance_record['course_name']}（{checked_at}）",
+        )
+        attendance_record["adjustment_created"] = True
+        attendance_record["adjustment_amount"] = amount_diff
+
     return attendance_record
+
+
+def revoke_attendance(attendance_id, payload=None):
+    payload = payload or {}
+    data = read_data()
+    record = next((r for r in data["attendance"] if r["id"] == attendance_id), None)
+    if not record:
+        raise ValueError("签到记录不存在")
+    if record.get("revoked"):
+        raise ValueError("该签到记录已被撤销")
+
+    month = record["checked_at"][:7]
+    teacher_id = record["teacher_id"]
+    hours = float(record["hours"])
+
+    settlement = get_settlement(teacher_id, month)
+
+    def do_revoke(data):
+        student = next((s for s in data["students"] if s["id"] == record["student_id"]), None)
+        target_record = next((r for r in data["attendance"] if r["id"] == attendance_id), None)
+
+        target_record["revoked"] = True
+        target_record["revoked_at"] = date.today().isoformat()
+        target_record["revoke_reason"] = payload.get("reason", "").strip()
+
+        if student:
+            student["remaining_hours"] = round(student["remaining_hours"] + hours, 2)
+
+        return data
+
+    mutate(do_revoke)
+
+    if settlement:
+        hourly_rate = float(settlement["hourly_rate"])
+        amount_diff = round(-hours * hourly_rate, 2)
+        hours_diff = -hours
+        create_adjustment(
+            teacher_id=teacher_id,
+            month=month,
+            attendance_id=attendance_id,
+            hours_diff=hours_diff,
+            amount_diff=amount_diff,
+            reason=f"结算后撤销签到：{record['course_name']}（{record['checked_at']}）",
+        )
+        record["adjustment_created"] = True
+        record["adjustment_amount"] = amount_diff
+
+    record["revoked"] = True
+    record["revoked_at"] = date.today().isoformat()
+    return record
 
 
 def _with_names(record, students, teachers):
     student = students.get(record["student_id"], {})
     teacher = teachers.get(record["teacher_id"], {})
-    return {
+    result = {
         **record,
         "student_name": student.get("name", "未知学员"),
         "teacher_name": teacher.get("name", "未知教师"),
     }
+    month = record["checked_at"][:7]
+    settlement = get_settlement(record["teacher_id"], month)
+    result["month_is_settled"] = settlement is not None
+    return result

@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 
-from ..services.payroll_service import calculate_payroll, settle_payroll
+from ..services.payroll_service import calculate_payroll, settle_payroll, list_adjustments
 
 payroll_bp = Blueprint("payroll", __name__)
 
@@ -17,3 +17,10 @@ def settle():
         return jsonify(settlement)
     except ValueError as error:
         return jsonify({"message": str(error)}), 400
+
+
+@payroll_bp.get("/adjustments")
+def adjustments():
+    teacher_id = request.args.get("teacher_id")
+    month = request.args.get("month")
+    return jsonify(list_adjustments(teacher_id=teacher_id, month=month))

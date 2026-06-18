@@ -56,6 +56,8 @@ def _default_data():
                 "hours": 2,
                 "checked_at": today,
                 "note": "Scratch 项目课",
+                "revoked": False,
+                "revoked_at": None,
             },
             {
                 "id": "att-002",
@@ -65,9 +67,12 @@ def _default_data():
                 "hours": 1,
                 "checked_at": today,
                 "note": "色彩练习",
+                "revoked": False,
+                "revoked_at": None,
             },
         ],
         "payroll_settlements": [],
+        "payroll_adjustments": [],
     }
 
 
