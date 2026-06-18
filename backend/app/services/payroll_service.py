@@ -117,6 +117,36 @@ def settle_payroll(payload):
     return settlement
 
 
+def revoke_settlement(payload):
+    require_fields(payload, ["teacher_id", "month"])
+    teacher_id = payload["teacher_id"]
+    target_month = payload["month"]
+
+    def do_revoke(data):
+        settlement_idx = next(
+            (
+                idx
+                for idx, item in enumerate(data["payroll_settlements"])
+                if item["teacher_id"] == teacher_id and item["month"] == target_month
+            ),
+            None,
+        )
+        if settlement_idx is None:
+            raise ValueError("该月份未结算，无法撤回")
+
+        del data["payroll_settlements"][settlement_idx]
+
+        data["payroll_adjustments"] = [
+            a for a in data["payroll_adjustments"]
+            if not (a["teacher_id"] == teacher_id and a["month"] == target_month)
+        ]
+
+        return data
+
+    mutate(do_revoke)
+    return {"teacher_id": teacher_id, "month": target_month, "revoked": True}
+
+
 def build_adjustment(teacher_id, month, attendance_id, hours_diff, amount_diff, reason):
     return {
         "id": new_id("adj"),

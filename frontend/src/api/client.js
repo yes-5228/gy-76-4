@@ -28,6 +28,7 @@ export const api = {
   reminders: () => request("/reminders"),
   payroll: (month) => request(`/payroll?month=${month}`),
   settlePayroll: (payload) => request("/payroll/settle", { method: "POST", body: JSON.stringify(payload) }),
+  revokeSettlement: (payload) => request("/payroll/settle", { method: "DELETE", body: JSON.stringify(payload) }),
   payrollAdjustments: (teacherId, month) => {
     const params = new URLSearchParams();
     if (teacherId) params.append("teacher_id", teacherId);

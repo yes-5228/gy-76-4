@@ -285,6 +285,16 @@ textarea {
   background: #922b21;
 }
 
+.small-button.outline {
+  background: transparent;
+  border: 1.5px solid #c0392b;
+  color: #c0392b;
+}
+
+.small-button.outline:hover {
+  background: #fdf2ef;
+}
+
 .table-list,
 .table-row {
   display: grid;

@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 
-from ..services.payroll_service import calculate_payroll, settle_payroll, list_adjustments, list_settled_months
+from ..services.payroll_service import calculate_payroll, settle_payroll, revoke_settlement, list_adjustments, list_settled_months
 
 payroll_bp = Blueprint("payroll", __name__)
 
@@ -15,6 +15,15 @@ def settle():
     try:
         settlement = settle_payroll(request.get_json(silent=True) or {})
         return jsonify(settlement)
+    except ValueError as error:
+        return jsonify({"message": str(error)}), 400
+
+
+@payroll_bp.delete("/settle")
+def settle_revoke():
+    try:
+        result = revoke_settlement(request.get_json(silent=True) or {})
+        return jsonify(result)
     except ValueError as error:
         return jsonify({"message": str(error)}), 400
 
