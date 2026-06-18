@@ -117,8 +117,8 @@ def settle_payroll(payload):
     return settlement
 
 
-def create_adjustment(teacher_id, month, attendance_id, hours_diff, amount_diff, reason):
-    adjustment = {
+def build_adjustment(teacher_id, month, attendance_id, hours_diff, amount_diff, reason):
+    return {
         "id": new_id("adj"),
         "teacher_id": teacher_id,
         "month": month,
@@ -128,13 +128,6 @@ def create_adjustment(teacher_id, month, attendance_id, hours_diff, amount_diff,
         "reason": reason,
         "created_at": date.today().isoformat(),
     }
-
-    def add(data):
-        data["payroll_adjustments"].append(adjustment)
-        return data
-
-    mutate(add)
-    return adjustment
 
 
 def is_settled(teacher_id, month):

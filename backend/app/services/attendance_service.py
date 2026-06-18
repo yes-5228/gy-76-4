@@ -1,7 +1,7 @@
 from datetime import date
 
 from .validation import require_fields
-from .payroll_service import get_settlement
+from .payroll_service import get_settlement, build_adjustment
 from ..storage import mutate, new_id, read_data
 
 
@@ -52,16 +52,14 @@ def check_in(payload):
         if settlement:
             hourly_rate = float(settlement["hourly_rate"])
             amount_diff = round(hours * hourly_rate, 2)
-            adjustment = {
-                "id": new_id("adj"),
-                "teacher_id": teacher_id,
-                "month": month,
-                "attendance_id": attendance_record["id"],
-                "hours_diff": round(float(hours), 2),
-                "amount_diff": amount_diff,
-                "reason": f"结算后新增签到：{attendance_record['course_name']}（{checked_at}）",
-                "created_at": date.today().isoformat(),
-            }
+            adjustment = build_adjustment(
+                teacher_id=teacher_id,
+                month=month,
+                attendance_id=attendance_record["id"],
+                hours_diff=hours,
+                amount_diff=amount_diff,
+                reason=f"结算后新增签到：{attendance_record['course_name']}（{checked_at}）",
+            )
             data["payroll_adjustments"].append(adjustment)
             attendance_record["adjustment_created"] = True
             attendance_record["adjustment_amount"] = amount_diff
@@ -102,16 +100,14 @@ def revoke_attendance(attendance_id, payload=None):
             hourly_rate = float(settlement["hourly_rate"])
             amount_diff = round(-hours * hourly_rate, 2)
             hours_diff = -hours
-            adjustment = {
-                "id": new_id("adj"),
-                "teacher_id": teacher_id,
-                "month": month,
-                "attendance_id": attendance_id,
-                "hours_diff": round(float(hours_diff), 2),
-                "amount_diff": amount_diff,
-                "reason": f"结算后撤销签到：{record['course_name']}（{record['checked_at']}）",
-                "created_at": date.today().isoformat(),
-            }
+            adjustment = build_adjustment(
+                teacher_id=teacher_id,
+                month=month,
+                attendance_id=attendance_id,
+                hours_diff=hours_diff,
+                amount_diff=amount_diff,
+                reason=f"结算后撤销签到：{record['course_name']}（{record['checked_at']}）",
+            )
             data["payroll_adjustments"].append(adjustment)
             target_record["adjustment_created"] = True
             target_record["adjustment_amount"] = amount_diff

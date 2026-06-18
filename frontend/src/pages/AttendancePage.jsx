@@ -3,12 +3,16 @@ import { api } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 import { currency } from "../utils/format";
 
+function getTodayDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 const initialForm = {
   student_id: "",
   teacher_id: "",
   course_name: "",
   hours: 1,
-  checked_at: new Date().toISOString().slice(0, 10),
+  checked_at: getTodayDate(),
   note: "",
 };
 
@@ -16,6 +20,13 @@ export function AttendancePage({ students, teachers, attendance, settledMonths, 
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("info");
+
+  const resetForm = () => {
+    setForm({
+      ...initialForm,
+      checked_at: getTodayDate(),
+    });
+  };
 
   const selectedMonth = form.checked_at ? form.checked_at.slice(0, 7) : "";
   const selectedTeacher = form.teacher_id;
@@ -38,7 +49,7 @@ export function AttendancePage({ students, teachers, attendance, settledMonths, 
     setMessageType("info");
     try {
       const result = await api.checkIn(form);
-      setForm(initialForm);
+      resetForm();
       await onCreated();
       if (result.adjustment_created) {
         setMessage(
