@@ -1,7 +1,7 @@
 from datetime import date
 
 from .validation import require_fields
-from .payroll_service import create_adjustment, get_settlement
+from .payroll_service import get_settlement
 from ..storage import mutate, new_id, read_data
 
 
@@ -36,7 +36,7 @@ def check_in(payload):
 
     settlement = get_settlement(teacher_id, month)
 
-    def add_record(data):
+    def add_record_and_adjustment(data):
         student = next((item for item in data["students"] if item["id"] == attendance_record["student_id"]), None)
         teacher = next((item for item in data["teachers"] if item["id"] == attendance_record["teacher_id"]), None)
         if not student:
@@ -48,24 +48,27 @@ def check_in(payload):
 
         student["remaining_hours"] = round(student["remaining_hours"] - hours, 2)
         data["attendance"].append(attendance_record)
+
+        if settlement:
+            hourly_rate = float(settlement["hourly_rate"])
+            amount_diff = round(hours * hourly_rate, 2)
+            adjustment = {
+                "id": new_id("adj"),
+                "teacher_id": teacher_id,
+                "month": month,
+                "attendance_id": attendance_record["id"],
+                "hours_diff": round(float(hours), 2),
+                "amount_diff": amount_diff,
+                "reason": f"结算后新增签到：{attendance_record['course_name']}（{checked_at}）",
+                "created_at": date.today().isoformat(),
+            }
+            data["payroll_adjustments"].append(adjustment)
+            attendance_record["adjustment_created"] = True
+            attendance_record["adjustment_amount"] = amount_diff
+
         return data
 
-    mutate(add_record)
-
-    if settlement:
-        hourly_rate = float(settlement["hourly_rate"])
-        amount_diff = round(hours * hourly_rate, 2)
-        create_adjustment(
-            teacher_id=teacher_id,
-            month=month,
-            attendance_id=attendance_record["id"],
-            hours_diff=hours,
-            amount_diff=amount_diff,
-            reason=f"结算后新增签到：{attendance_record['course_name']}（{checked_at}）",
-        )
-        attendance_record["adjustment_created"] = True
-        attendance_record["adjustment_amount"] = amount_diff
-
+    mutate(add_record_and_adjustment)
     return attendance_record
 
 
@@ -84,7 +87,7 @@ def revoke_attendance(attendance_id, payload=None):
 
     settlement = get_settlement(teacher_id, month)
 
-    def do_revoke(data):
+    def do_revoke_and_adjustment(data):
         student = next((s for s in data["students"] if s["id"] == record["student_id"]), None)
         target_record = next((r for r in data["attendance"] if r["id"] == attendance_id), None)
 
@@ -95,27 +98,34 @@ def revoke_attendance(attendance_id, payload=None):
         if student:
             student["remaining_hours"] = round(student["remaining_hours"] + hours, 2)
 
+        if settlement:
+            hourly_rate = float(settlement["hourly_rate"])
+            amount_diff = round(-hours * hourly_rate, 2)
+            hours_diff = -hours
+            adjustment = {
+                "id": new_id("adj"),
+                "teacher_id": teacher_id,
+                "month": month,
+                "attendance_id": attendance_id,
+                "hours_diff": round(float(hours_diff), 2),
+                "amount_diff": amount_diff,
+                "reason": f"结算后撤销签到：{record['course_name']}（{record['checked_at']}）",
+                "created_at": date.today().isoformat(),
+            }
+            data["payroll_adjustments"].append(adjustment)
+            target_record["adjustment_created"] = True
+            target_record["adjustment_amount"] = amount_diff
+
         return data
 
-    mutate(do_revoke)
-
-    if settlement:
-        hourly_rate = float(settlement["hourly_rate"])
-        amount_diff = round(-hours * hourly_rate, 2)
-        hours_diff = -hours
-        create_adjustment(
-            teacher_id=teacher_id,
-            month=month,
-            attendance_id=attendance_id,
-            hours_diff=hours_diff,
-            amount_diff=amount_diff,
-            reason=f"结算后撤销签到：{record['course_name']}（{record['checked_at']}）",
-        )
-        record["adjustment_created"] = True
-        record["adjustment_amount"] = amount_diff
+    mutate(do_revoke_and_adjustment)
 
     record["revoked"] = True
     record["revoked_at"] = date.today().isoformat()
+    if settlement:
+        hourly_rate = float(settlement["hourly_rate"])
+        record["adjustment_created"] = True
+        record["adjustment_amount"] = round(-hours * hourly_rate, 2)
     return record
 
 

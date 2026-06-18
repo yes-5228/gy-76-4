@@ -34,4 +34,5 @@ export const api = {
     if (month) params.append("month", month);
     return request(`/payroll/adjustments?${params.toString()}`);
   },
+  settledMonths: () => request("/payroll/settled-months"),
 };

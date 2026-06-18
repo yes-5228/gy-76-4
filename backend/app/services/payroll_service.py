@@ -153,6 +153,19 @@ def get_settlement(teacher_id, month):
     )
 
 
+def list_settled_months():
+    data = read_data()
+    return [
+        {
+            "teacher_id": s["teacher_id"],
+            "month": s["month"],
+            "settled_at": s["settled_at"],
+        }
+        for s in data["payroll_settlements"]
+        if s["status"] == "settled"
+    ]
+
+
 def list_adjustments(teacher_id=None, month=None):
     data = read_data()
     adjustments = data["payroll_adjustments"]

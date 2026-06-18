@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { api } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 import { currency } from "../utils/format";
@@ -12,10 +12,25 @@ const initialForm = {
   note: "",
 };
 
-export function AttendancePage({ students, teachers, attendance, onCreated }) {
+export function AttendancePage({ students, teachers, attendance, settledMonths, onCreated }) {
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("info");
+
+  const selectedMonth = form.checked_at ? form.checked_at.slice(0, 7) : "";
+  const selectedTeacher = form.teacher_id;
+
+  const monthIsSettled = useMemo(() => {
+    if (!selectedMonth || !selectedTeacher) return false;
+    return settledMonths.some(
+      (s) => s.teacher_id === selectedTeacher && s.month === selectedMonth
+    );
+  }, [selectedMonth, selectedTeacher, settledMonths]);
+
+  const selectedTeacherName = useMemo(() => {
+    const t = teachers.find((t) => t.id === selectedTeacher);
+    return t?.name || "该教师";
+  }, [selectedTeacher, teachers]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -27,7 +42,9 @@ export function AttendancePage({ students, teachers, attendance, onCreated }) {
       await onCreated();
       if (result.adjustment_created) {
         setMessage(
-          `签到成功，课时已扣减。由于该月课酬已结算，已生成差额调整 +${currency(result.adjustment_amount)}`
+          `签到成功，课时已扣减。由于 ${selectedTeacherName} ${selectedMonth} 月课酬已结算，已自动生成差额调整 ${
+            result.adjustment_amount >= 0 ? "+" : ""
+          }${currency(result.adjustment_amount)}`
         );
         setMessageType("warning");
       } else {
@@ -40,7 +57,13 @@ export function AttendancePage({ students, teachers, attendance, onCreated }) {
   };
 
   const revoke = async (record) => {
-    if (!confirm(`确认撤销 ${record.checked_at} 的签到记录吗？课时将退回给学员。`)) {
+    const isSettledMonth = record.month_is_settled;
+    const month = record.checked_at.slice(0, 7);
+    let confirmMessage = `确认撤销 ${record.checked_at} ${record.student_name} 的签到记录吗？\n\n课时将退回给学员。`;
+    if (isSettledMonth) {
+      confirmMessage += `\n\n⚠️  注意：${month} 月课酬已结算，撤销后将自动生成差额调整记录，原始结算金额保持不变。`;
+    }
+    if (!confirm(confirmMessage)) {
       return;
     }
     setMessage("");
@@ -50,7 +73,7 @@ export function AttendancePage({ students, teachers, attendance, onCreated }) {
       await onCreated();
       if (result.adjustment_created) {
         setMessage(
-          `已撤销签到，课时已退回。由于该月课酬已结算，已生成差额调整 ${currency(result.adjustment_amount)}`
+          `已撤销签到，课时已退回。由于 ${month} 月课酬已结算，已自动生成差额调整 ${currency(result.adjustment_amount)}`
         );
         setMessageType("warning");
       } else {
@@ -86,6 +109,13 @@ export function AttendancePage({ students, teachers, attendance, onCreated }) {
           <span>自动扣减课时</span>
         </div>
         <form className="form-stack" onSubmit={submit}>
+          {monthIsSettled && (
+            <div className="inline-message warning">
+              ⚠️ <strong>注意：</strong>
+              {selectedTeacherName} {selectedMonth} 月课酬已结算并锁定。
+              此次签到将自动生成「差额调整」记录，原始结算金额保持不变。
+            </div>
+          )}
           <label>
             学员
             <select value={form.student_id} onChange={(event) => onStudentChange(event.target.value)} required>

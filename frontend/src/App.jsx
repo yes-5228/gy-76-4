@@ -23,20 +23,22 @@ export function App() {
     teachers: [],
     attendance: [],
     reminders: [],
+    settledMonths: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const refresh = async () => {
     setError("");
-    const [dashboard, students, teachers, attendance, reminders] = await Promise.all([
+    const [dashboard, students, teachers, attendance, reminders, settledMonths] = await Promise.all([
       api.dashboard(),
       api.students(),
       api.teachers(),
       api.attendance(),
       api.reminders(),
+      api.settledMonths(),
     ]);
-    setData({ dashboard, students, teachers, attendance, reminders });
+    setData({ dashboard, students, teachers, attendance, reminders, settledMonths });
   };
 
   useEffect(() => {
@@ -67,6 +69,7 @@ export function App() {
                 students={data.students}
                 teachers={data.teachers}
                 attendance={data.attendance}
+                settledMonths={data.settledMonths}
                 onCreated={refresh}
               />
             )}
